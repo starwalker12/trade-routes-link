@@ -241,8 +241,16 @@ export const search = {
 // Suppliers
 export const suppliers = {
   getProfile: (id: string) => api.get<SupplierProfile>(`/suppliers/${id}`),
+  getMyProfile: () => api.get<SupplierProfile>('/suppliers/profile/me'),
   updateProfile: (data: Partial<SupplierProfile>) => api.put('/suppliers/profile', data),
   getInventory: (id: string) => api.get<InventoryItem[]>(`/suppliers/${id}/inventory`),
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return api.post<{ success: boolean; logoUrl: string }>('/supplier/logo', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // Inventory (supplier only)

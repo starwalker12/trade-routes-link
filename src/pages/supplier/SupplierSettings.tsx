@@ -1,17 +1,75 @@
-import { User, Store, MapPin, Bell, Shield, LogOut, ChevronRight } from 'lucide-react';
+import { User, Store, MapPin, Bell, Shield, LogOut, ChevronRight, Upload, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { suppliers, SupplierProfile, BASE_URL } from '@/lib/api';
+import { toast } from 'sonner';
+import { useState, useRef } from 'react';
 
 export default function SupplierSettings() {
   const { user, logout, isDarkMode, toggleDarkMode } = useApp();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  // Fetch supplier profile
+  const { data: supplierProfile, isLoading: profileLoading } = useQuery<SupplierProfile>({
+    queryKey: ['supplierProfile'],
+    queryFn: async () => {
+      const response = await suppliers.getMyProfile();
+      return response.data;
+    },
+    enabled: !!user,
+  });
+
+  // Logo upload mutation
+  const uploadLogoMutation = useMutation({
+    mutationFn: (file: File) => suppliers.uploadLogo(file),
+    onSuccess: (response) => {
+      toast.success('Logo uploaded successfully!');
+      queryClient.invalidateQueries({ queryKey: ['supplierProfile'] });
+      setIsUploading(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to upload logo');
+      setIsUploading(false);
+    },
+  });
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid file type. Please upload PNG, JPEG, or WebP image.');
+      return;
+    }
+
+    // Validate file size (2MB)
+    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+    if (file.size > maxSize) {
+      toast.error('File too large. Maximum size is 2MB.');
+      return;
+    }
+
+    setIsUploading(true);
+    uploadLogoMutation.mutate(file);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -26,15 +84,84 @@ export default function SupplierSettings() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-foreground">{user?.name || 'Supplier'}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{supplierProfile?.shopName || user?.name || 'Supplier'}</h2>
               <VerifiedBadge size="sm" />
             </div>
-            <p className="text-sm text-muted-foreground">{user?.shopName || 'Your Shop'}</p>
+            <p className="text-sm text-muted-foreground">{supplierProfile?.address || 'Your Shop'}</p>
             <p className="text-sm text-muted-foreground">{user?.phone}</p>
           </div>
           <Button variant="outline" size="sm">Edit</Button>
         </div>
       </div>
+
+      {/* Company Logo Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Company Logo</CardTitle>
+          <CardDescription>
+            Upload your company logo to appear on invoices (PNG, JPEG, or WebP, max 2MB)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Logo Preview */}
+          <div className="flex items-center gap-4">
+            {profileLoading ? (
+              <div className="flex h-32 w-32 items-center justify-center rounded-lg border border-border bg-muted">
+                <div className="text-sm text-muted-foreground">Loading...</div>
+              </div>
+            ) : supplierProfile?.logoUrl ? (
+              <div className="relative">
+                <img
+                  src={`${BASE_URL}${supplierProfile.logoUrl}`}
+                  alt="Company logo"
+                  className="h-32 w-32 rounded-lg border border-border object-contain bg-white p-2"
+                />
+              </div>
+            ) : (
+              <div className="flex h-32 w-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted">
+                <div className="text-center">
+                  <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                  <div className="text-sm text-muted-foreground">No logo uploaded</div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={triggerFileInput}
+                disabled={isUploading}
+                className="gap-2"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    {supplierProfile?.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                  </>
+                )}
+              </Button>
+              {supplierProfile?.logoUrl && (
+                <p className="text-xs text-muted-foreground">
+                  Current logo will be replaced
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </CardContent>
+      </Card>
 
       {/* Settings Menu */}
       <div className="space-y-2">

@@ -46,6 +46,29 @@ router.get('/:supplierId', async (req, res, next) => {
   }
 });
 
+router.get('/profile/me', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest, res: Response, next) => {
+  try {
+    const userId = req.user!.userId;
+
+    const profile = await prisma.supplierProfile.findUnique({
+      where: { userId },
+      include: {
+        city: true,
+        marketArea: true,
+        subscription: true,
+      },
+    });
+
+    if (!profile) {
+      throw new AppError(404, 'Supplier profile not found');
+    }
+
+    res.json(profile);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.put('/profile', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest, res: Response, next) => {
   try {
     const data = updateProfileSchema.parse(req.body);
