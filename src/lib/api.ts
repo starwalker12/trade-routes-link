@@ -84,6 +84,7 @@ export interface SupplierProfile {
   lng: number;
   whatsappNumber?: string;
   phoneNumber: string;
+  logoUrl?: string;
   verifiedStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
   city?: City;
   marketArea?: MarketArea;
