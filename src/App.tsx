@@ -30,6 +30,9 @@ import SupplierOnboarding from "./pages/supplier/SupplierOnboarding";
 import SupplierSubscription from "./pages/supplier/SupplierSubscription";
 import SupplierSettings from "./pages/supplier/SupplierSettings";
 import ReceiptImport from "./pages/supplier/ReceiptImport";
+import InvoicesList from "./pages/supplier/InvoicesList";
+import InvoiceForm from "./pages/supplier/InvoiceForm";
+import InvoiceDetail from "./pages/supplier/InvoiceDetail";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -68,6 +71,10 @@ const App = () => (
             <Route path="/supplier/subscription" element={<AppLayout><SupplierSubscription /></AppLayout>} />
             <Route path="/supplier/settings" element={<AppLayout><SupplierSettings /></AppLayout>} />
             <Route path="/supplier/import" element={<AppLayout><ReceiptImport /></AppLayout>} />
+            <Route path="/supplier/invoices" element={<AppLayout><InvoicesList /></AppLayout>} />
+            <Route path="/supplier/invoices/new" element={<AppLayout><InvoiceForm /></AppLayout>} />
+            <Route path="/supplier/invoices/:id" element={<AppLayout><InvoiceDetail /></AppLayout>} />
+            <Route path="/supplier/invoices/:id/edit" element={<AppLayout><InvoiceForm /></AppLayout>} />
 
             {/* Admin routes */}
             <Route path="/admin" element={<AppLayout><AdminDashboard /></AppLayout>} />

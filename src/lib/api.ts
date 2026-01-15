@@ -115,6 +115,77 @@ export interface SearchResult {
   matchCount: number;
 }
 
+export interface Invoice {
+  id: string;
+  supplierId: string;
+  retailerUserId?: string;
+  retailer_name_snapshot: string;
+  retailer_phone_snapshot?: string;
+  retailer_address_snapshot?: string;
+  invoice_number: string;
+  invoice_date: string;
+  due_date?: string;
+  currency: string;
+  subtotal: number;
+  tax_total: number;
+  discount_total: number;
+  total: number;
+  pdf_url?: string;
+  status: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  lineItems?: InvoiceLineItem[];
+  _count?: {
+    lineItems: number;
+  };
+}
+
+export interface InvoiceLineItem {
+  id: string;
+  invoiceId: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate?: number;
+  line_total: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateInvoiceData {
+  retailerUserId?: string;
+  retailer_name_snapshot: string;
+  retailer_phone_snapshot?: string;
+  retailer_address_snapshot?: string;
+  invoice_date: string;
+  due_date?: string;
+  notes?: string;
+}
+
+export interface UpdateInvoiceData {
+  retailerUserId?: string;
+  retailer_name_snapshot?: string;
+  retailer_phone_snapshot?: string;
+  retailer_address_snapshot?: string;
+  invoice_date?: string;
+  due_date?: string;
+  notes?: string;
+  discount_total?: number;
+  status?: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+}
+
+export interface ManageLineItemsData {
+  items: Array<{
+    id?: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    tax_rate?: number;
+  }>;
+  itemsToDelete?: string[];
+}
+
 // ============================================
 // API FUNCTIONS
 // ============================================
@@ -177,4 +248,35 @@ export const inventory = {
   update: (id: string, data: { quantity: number; visibilityMode?: 'EXACT_QUANTITY' | 'IN_STOCK_ONLY' }) =>
     api.put(`/inventory/${id}`, data),
   delete: (id: string) => api.delete(`/inventory/${id}`),
+};
+
+// Invoices (supplier only)
+export const invoices = {
+  list: (params?: {
+    page?: number;
+    limit?: number;
+    status?: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+    sort?: string;
+  }) => api.get<{
+    invoices: Invoice[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }>('/supplier/invoices', { params }),
+  
+  get: (id: string) => api.get<Invoice>(`/supplier/invoices/${id}`),
+  
+  create: (data: CreateInvoiceData) => api.post<Invoice>('/supplier/invoices', data),
+  
+  update: (id: string, data: UpdateInvoiceData) => 
+    api.patch<Invoice>(`/supplier/invoices/${id}`, data),
+  
+  manageLineItems: (id: string, data: ManageLineItemsData) => 
+    api.post<Invoice>(`/supplier/invoices/${id}/items`, data),
+  
+  generatePDF: (id: string) => 
+    api.post<{ success: boolean; pdf_url: string }>(`/supplier/invoices/${id}/generate-pdf`),
 };
