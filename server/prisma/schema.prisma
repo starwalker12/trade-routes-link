@@ -314,7 +314,7 @@ model RetailerCustomer {
 model Subscription {
   id         String             @id @default(uuid())
   supplierId String             @unique
-  plan       Plan               @default(STARTER)
+  plan       Plan               @default(FREE)
   status     SubscriptionStatus @default(ACTIVE)
   startedAt  DateTime           @default(now())
   endsAt     DateTime?
@@ -325,8 +325,7 @@ model Subscription {
 }
 
 enum Plan {
-  STARTER
-  GROWTH
+  FREE
   PRO
 }
 

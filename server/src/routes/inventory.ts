@@ -10,9 +10,8 @@ const router = Router();
 const prisma = new PrismaClient();
 
 const INVENTORY_LIMITS: Record<Plan, number | null> = {
-  STARTER: 50,
-  GROWTH: 500,
-  PRO: null,
+  FREE: 25,
+  PRO: null, // unlimited
 };
 
 const createInventorySchema = z.object({
@@ -82,6 +81,7 @@ router.post('/', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest,
 
     const profile = await prisma.supplierProfile.findUnique({
       where: { userId },
+      include: { subscription: true },
     });
 
     if (!profile) {
@@ -89,6 +89,11 @@ router.post('/', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest,
     }
 
     await checkInventoryLimit(profile.id);
+
+    // Enforce visibility mode for FREE suppliers
+    if (profile.subscription?.plan === 'FREE' && data.visibilityMode === 'EXACT_QUANTITY') {
+      throw new AppError(403, 'FREE tier suppliers can only use IN_STOCK_ONLY visibility mode. Upgrade to PRO to show exact quantities.', 'upgrade_required');
+    }
 
     const searchText = normalizeText(
       [data.title, data.category, data.brand, data.phoneModel, data.variant]
@@ -132,12 +137,17 @@ router.post('/', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest,
       throw new AppError(400, 'Product already exists in inventory');
     }
 
+    // Force IN_STOCK_ONLY for FREE suppliers
+    const visibilityMode = profile.subscription?.plan === 'FREE' 
+      ? VisibilityMode.IN_STOCK_ONLY 
+      : (data.visibilityMode as VisibilityMode);
+
     const item = await prisma.inventoryItem.create({
       data: {
         supplierId: profile.id,
         productId: product.id,
         quantity: data.quantity,
-        visibilityMode: data.visibilityMode as VisibilityMode,
+        visibilityMode,
       },
       include: {
         product: true,
@@ -162,6 +172,7 @@ router.put('/:itemId', authenticate, requireRole('SUPPLIER'), async (req: AuthRe
 
     const profile = await prisma.supplierProfile.findUnique({
       where: { userId },
+      include: { subscription: true },
     });
 
     if (!profile) {
@@ -176,9 +187,20 @@ router.put('/:itemId', authenticate, requireRole('SUPPLIER'), async (req: AuthRe
       throw new AppError(404, 'Inventory item not found');
     }
 
+    // Enforce visibility mode for FREE suppliers
+    if (profile.subscription?.plan === 'FREE' && data.visibilityMode === 'EXACT_QUANTITY') {
+      throw new AppError(403, 'FREE tier suppliers can only use IN_STOCK_ONLY visibility mode. Upgrade to PRO to show exact quantities.', 'upgrade_required');
+    }
+
+    // Force IN_STOCK_ONLY for FREE suppliers if they try to change it
+    const updateData = { ...data };
+    if (profile.subscription?.plan === 'FREE' && data.visibilityMode) {
+      updateData.visibilityMode = VisibilityMode.IN_STOCK_ONLY;
+    }
+
     const updated = await prisma.inventoryItem.update({
       where: { id: itemId },
-      data,
+      data: updateData,
       include: {
         product: true,
       },

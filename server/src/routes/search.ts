@@ -21,6 +21,7 @@ const searchSchema = z.object({
  * Results are grouped by supplier, with each supplier containing matching products.
  * 
  * @property supplier - Complete supplier profile with location details
+ * @property supplier.tier - Subscription tier (FREE or PRO)
  * @property supplier.city - Embedded city information (id and name)
  * @property supplier.marketArea - Embedded market area information (id and name)
  * @property products - Array of products that match the search query for this supplier
@@ -40,6 +41,7 @@ interface SupplierSearchResult {
     whatsappNumber: string | null;
     phoneNumber: string;
     verifiedStatus: VerifiedStatus;
+    tier: string;
     /** City information (embedded) */
     city: {
       id: string;
@@ -104,6 +106,7 @@ router.post('/', async (req, res: Response, next) => {
               include: {
                 city: true,
                 marketArea: true,
+                subscription: true,
               },
             },
           },
@@ -117,6 +120,7 @@ router.post('/', async (req, res: Response, next) => {
     products.forEach(product => {
       product.inventoryItems.forEach(item => {
         const supplierId = item.supplierId;
+        const supplierTier = item.supplier.subscription?.plan || 'FREE';
         
         if (!supplierMap.has(supplierId)) {
           supplierMap.set(supplierId, {
@@ -131,6 +135,7 @@ router.post('/', async (req, res: Response, next) => {
               whatsappNumber: item.supplier.whatsappNumber,
               phoneNumber: item.supplier.phoneNumber,
               verifiedStatus: item.supplier.verifiedStatus,
+              tier: supplierTier,
               city: {
                 id: item.supplier.city.id,
                 name: item.supplier.city.name,
@@ -146,6 +151,10 @@ router.post('/', async (req, res: Response, next) => {
         }
 
         const supplierResult = supplierMap.get(supplierId)!;
+        
+        // For FREE suppliers, always return IN_STOCK_ONLY visibility regardless of setting
+        const effectiveVisibilityMode = supplierTier === 'FREE' ? 'IN_STOCK_ONLY' : item.visibilityMode;
+        
         supplierResult.products.push({
           product: {
             id: product.id,
@@ -155,7 +164,7 @@ router.post('/', async (req, res: Response, next) => {
             phoneModel: product.phoneModel,
             variant: product.variant,
           },
-          visibilityMode: item.visibilityMode,
+          visibilityMode: effectiveVisibilityMode,
           inStock: item.quantity > 0,
           lastUpdated: item.updatedAt.toISOString(),
         });
@@ -165,7 +174,17 @@ router.post('/', async (req, res: Response, next) => {
 
     // Convert to array and sort by ranking algorithm
     const results = Array.from(supplierMap.values()).sort((a, b) => {
-      // 1. Verified suppliers first
+      // 1. PRO suppliers first (even before verified status)
+      const aTier = a.supplier.tier || 'FREE';
+      const bTier = b.supplier.tier || 'FREE';
+      if (aTier === 'PRO' && bTier !== 'PRO') {
+        return -1;
+      }
+      if (aTier !== 'PRO' && bTier === 'PRO') {
+        return 1;
+      }
+
+      // 2. Verified suppliers next (within same tier)
       if (a.supplier.verifiedStatus === VerifiedStatus.VERIFIED && b.supplier.verifiedStatus !== VerifiedStatus.VERIFIED) {
         return -1;
       }

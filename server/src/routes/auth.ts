@@ -148,7 +148,7 @@ router.post('/register/supplier', async (req, res, next) => {
             phoneNumber: data.phoneNumber,
             subscription: {
               create: {
-                plan: 'STARTER',
+                plan: 'FREE',
                 status: 'ACTIVE',
               },
             },

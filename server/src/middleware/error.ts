@@ -3,7 +3,8 @@ import { Request, Response, NextFunction } from 'express';
 export class AppError extends Error {
   constructor(
     public statusCode: number,
-    public message: string
+    public message: string,
+    public code?: string
   ) {
     super(message);
     this.name = 'AppError';
@@ -19,7 +20,11 @@ export function errorHandler(
   console.error('Error:', err);
 
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({ error: err.message });
+    const response: { error: string; code?: string } = { error: err.message };
+    if (err.code) {
+      response.code = err.code;
+    }
+    res.status(err.statusCode).json(response);
     return;
   }
 

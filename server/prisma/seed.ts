@@ -279,7 +279,7 @@ async function main() {
           verifiedStatus: VerifiedStatus.VERIFIED,
           subscription: {
             create: {
-              plan: Plan.GROWTH,
+              plan: Plan.PRO,
               status: SubscriptionStatus.ACTIVE,
             },
           },
@@ -307,7 +307,7 @@ async function main() {
           verifiedStatus: VerifiedStatus.PENDING,
           subscription: {
             create: {
-              plan: Plan.STARTER,
+              plan: Plan.FREE,
               status: SubscriptionStatus.ACTIVE,
             },
           },
@@ -335,7 +335,7 @@ async function main() {
           verifiedStatus: VerifiedStatus.VERIFIED,
           subscription: {
             create: {
-              plan: Plan.PRO,
+              plan: Plan.FREE,
               status: SubscriptionStatus.ACTIVE,
             },
           },
@@ -555,9 +555,11 @@ async function main() {
   console.log('\n=== TEST USER CREDENTIALS ===');
   console.log('Admin: admin@test.com / password123');
   console.log('Retailer: retailer@test.com / password123');
-  console.log('Verified Supplier (Pro): supplier1@test.com / password123');
-  console.log('Verified Supplier (Growth): supplier2@test.com / password123');
-  console.log('Unverified Supplier (Starter): supplier3@test.com / password123');
+  console.log('Verified Supplier (PRO): supplier1@test.com / password123');
+  console.log('Verified Supplier (PRO): supplier2@test.com / password123');
+  console.log('Unverified Supplier (FREE): supplier3@test.com / password123');
+  console.log('Verified Supplier (FREE): supplier4@test.com / password123');
+  console.log('Verified Supplier (PRO): supplier5@test.com / password123');
   console.log('============================\n');
 }
 
