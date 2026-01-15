@@ -30,15 +30,20 @@ npx prisma migrate dev
 npm run prisma:seed
 cd ..
 
-# 5. Start backend (in one terminal)
+# 5. Create uploads directory (for invoice PDFs)
+mkdir -p server/uploads/invoices
+
+# 6. Start backend (in one terminal)
 cd server && npm run dev
 
-# 6. Start frontend (in another terminal)
+# 7. Start frontend (in another terminal)
 npm run dev
 ```
 
 Frontend: http://localhost:5173  
 Backend: http://localhost:3001
+
+**Note:** Invoice PDFs are stored in `server/uploads/invoices/{supplierId}/` directory.
 
 ## 🧪 Test Credentials
 
@@ -64,12 +69,27 @@ All passwords: `password123`
 - ✅ Inventory management with subscription gating
 - ✅ Role-based access control
 - ✅ 2-tier subscription system (FREE/PRO)
+- ✅ **Invoice Management System** with PDF generation
 
 ### Frontend
 - ✅ React + TypeScript + TanStack Query
 - ✅ SearchResults page wired to real API
 - ✅ AppContext fetching cities dynamically
 - ✅ Axios client with auth interceptors
+- ✅ **Invoice Management UI** (list, create, edit, detail pages)
+
+### Invoice System (NEW)
+- ✅ Complete invoice CRUD operations
+- ✅ Line item management with real-time totals
+- ✅ Professional A4 PDF generation with pdfkit
+- ✅ Tier-based watermarking:
+  - **FREE Plan:** PDFs include "Generated with Free Plan" watermark
+  - **PRO Plan:** No watermark on PDFs
+- ✅ Invoice status workflow (DRAFT → SENT → PAID/CANCELLED)
+- ✅ Auto-generated invoice numbers (INV-YYYY-####)
+- ✅ Currency support (default PKR)
+- ✅ Tax and discount calculations
+- ✅ Retailer snapshot (name, phone, address)
 
 ### Subscription Tiers
 
@@ -126,6 +146,43 @@ Authorization: Bearer <token>
   },
   "quantity": 100
 }
+
+# Invoice Management (Supplier only)
+# Create Invoice
+POST /api/supplier/invoices
+Authorization: Bearer <token>
+{
+  "retailer_name_snapshot": "Mobile Shop",
+  "retailer_phone_snapshot": "+92-300-1234567",
+  "invoice_date": "2026-01-15T00:00:00Z",
+  "due_date": "2026-01-30T00:00:00Z"
+}
+
+# List Invoices
+GET /api/supplier/invoices?page=1&limit=20&status=DRAFT
+Authorization: Bearer <token>
+
+# Get Single Invoice
+GET /api/supplier/invoices/{id}
+Authorization: Bearer <token>
+
+# Add/Update Line Items
+POST /api/supplier/invoices/{id}/items
+Authorization: Bearer <token>
+{
+  "items": [
+    {
+      "description": "Samsung Cases",
+      "quantity": 50,
+      "unit_price": 800,
+      "tax_rate": 18
+    }
+  ]
+}
+
+# Generate PDF
+POST /api/supplier/invoices/{id}/generate-pdf
+Authorization: Bearer <token>
 ```
 
 ## 🔍 Search Features

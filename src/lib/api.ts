@@ -37,6 +37,20 @@ api.interceptors.response.use(
 
 export default api;
 
+// Base URL for non-API resources (like PDFs)
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+export const BASE_URL = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+
+// Helper to safely open PDF URLs
+export const openPdfUrl = (pdfUrl: string) => {
+  // Validate that the URL is a relative path starting with /
+  if (!pdfUrl.startsWith('/') || pdfUrl.includes('..')) {
+    console.error('Invalid PDF URL');
+    return;
+  }
+  window.open(`${BASE_URL}${pdfUrl}`, '_blank');
+};
+
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
@@ -115,6 +129,77 @@ export interface SearchResult {
   matchCount: number;
 }
 
+export interface Invoice {
+  id: string;
+  supplierId: string;
+  retailerUserId?: string;
+  retailer_name_snapshot: string;
+  retailer_phone_snapshot?: string;
+  retailer_address_snapshot?: string;
+  invoice_number: string;
+  invoice_date: string;
+  due_date?: string;
+  currency: string;
+  subtotal: number;
+  tax_total: number;
+  discount_total: number;
+  total: number;
+  pdf_url?: string;
+  status: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  lineItems?: InvoiceLineItem[];
+  _count?: {
+    lineItems: number;
+  };
+}
+
+export interface InvoiceLineItem {
+  id: string;
+  invoiceId: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  tax_rate?: number;
+  line_total: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateInvoiceData {
+  retailerUserId?: string;
+  retailer_name_snapshot: string;
+  retailer_phone_snapshot?: string;
+  retailer_address_snapshot?: string;
+  invoice_date: string;
+  due_date?: string;
+  notes?: string;
+}
+
+export interface UpdateInvoiceData {
+  retailerUserId?: string;
+  retailer_name_snapshot?: string;
+  retailer_phone_snapshot?: string;
+  retailer_address_snapshot?: string;
+  invoice_date?: string;
+  due_date?: string;
+  notes?: string;
+  discount_total?: number;
+  status?: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+}
+
+export interface ManageLineItemsData {
+  items: Array<{
+    id?: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    tax_rate?: number;
+  }>;
+  itemsToDelete?: string[];
+}
+
 // ============================================
 // API FUNCTIONS
 // ============================================
@@ -126,7 +211,7 @@ export const auth = {
     phone?: string;
     password: string;
     role: 'RETAILER' | 'SUPPLIER';
-    profile: any;
+    profile: Record<string, unknown>;
   }) => api.post('/auth/register', data),
 
   login: (data: { email?: string; phone?: string; password: string }) =>
@@ -177,4 +262,35 @@ export const inventory = {
   update: (id: string, data: { quantity: number; visibilityMode?: 'EXACT_QUANTITY' | 'IN_STOCK_ONLY' }) =>
     api.put(`/inventory/${id}`, data),
   delete: (id: string) => api.delete(`/inventory/${id}`),
+};
+
+// Invoices (supplier only)
+export const invoices = {
+  list: (params?: {
+    page?: number;
+    limit?: number;
+    status?: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+    sort?: string;
+  }) => api.get<{
+    invoices: Invoice[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }>('/supplier/invoices', { params }),
+  
+  get: (id: string) => api.get<Invoice>(`/supplier/invoices/${id}`),
+  
+  create: (data: CreateInvoiceData) => api.post<Invoice>('/supplier/invoices', data),
+  
+  update: (id: string, data: UpdateInvoiceData) => 
+    api.patch<Invoice>(`/supplier/invoices/${id}`, data),
+  
+  manageLineItems: (id: string, data: ManageLineItemsData) => 
+    api.post<Invoice>(`/supplier/invoices/${id}/items`, data),
+  
+  generatePDF: (id: string) => 
+    api.post<{ success: boolean; pdf_url: string }>(`/supplier/invoices/${id}/generate-pdf`),
 };

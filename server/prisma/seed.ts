@@ -11,6 +11,8 @@ async function main() {
   await prisma.auditLog.deleteMany();
   await prisma.chatMessage.deleteMany();
   await prisma.chatThread.deleteMany();
+  await prisma.invoiceLineItem.deleteMany();
+  await prisma.invoice.deleteMany();
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.retailerCustomer.deleteMany();
@@ -548,6 +550,131 @@ async function main() {
         note: 'Need bulk pricing for Samsung A32 cases',
         status: 'PENDING',
       },
+    });
+  }
+
+  // ============================================
+  // SAMPLE INVOICES
+  // ============================================
+  console.log('Creating sample invoices...');
+
+  if (supplier1Profile && retailer1Profile) {
+    // Invoice 1: DRAFT invoice for PRO supplier
+    const invoice1 = await prisma.invoice.create({
+      data: {
+        supplierId: supplier1Profile.id,
+        retailerUserId: retailer1.id,
+        retailer_name_snapshot: 'Mobile Hub Lahore',
+        retailer_phone_snapshot: '+92-300-1234567',
+        retailer_address_snapshot: 'Shop 45, Hall Road, Lahore',
+        invoice_number: 'INV-2026-0001',
+        invoice_date: new Date('2026-01-10'),
+        due_date: new Date('2026-01-25'),
+        currency: 'PKR',
+        subtotal: 45000,
+        tax_total: 7200,
+        discount_total: 2000,
+        total: 50200,
+        status: 'DRAFT',
+        notes: 'Bulk order discount applied',
+      },
+    });
+
+    await prisma.invoiceLineItem.createMany({
+      data: [
+        {
+          invoiceId: invoice1.id,
+          description: 'Samsung A32 Premium Cases (Pack of 50)',
+          quantity: 50,
+          unit_price: 800,
+          tax_rate: 18,
+          line_total: 47200,
+        },
+        {
+          invoiceId: invoice1.id,
+          description: 'Tempered Glass Protectors (Pack of 20)',
+          quantity: 20,
+          unit_price: 250,
+          tax_rate: 0,
+          line_total: 5000,
+        },
+      ],
+    });
+
+    // Invoice 2: SENT invoice for PRO supplier
+    const invoice2 = await prisma.invoice.create({
+      data: {
+        supplierId: supplier1Profile.id,
+        retailer_name_snapshot: 'Tech Store Karachi',
+        retailer_phone_snapshot: '+92-321-9876543',
+        retailer_address_snapshot: 'Shop 12, Saddar, Karachi',
+        invoice_number: 'INV-2026-0002',
+        invoice_date: new Date('2026-01-12'),
+        due_date: new Date('2026-01-27'),
+        currency: 'PKR',
+        subtotal: 28000,
+        tax_total: 5040,
+        discount_total: 0,
+        total: 33040,
+        status: 'SENT',
+        notes: 'Payment terms: 15 days',
+      },
+    });
+
+    await prisma.invoiceLineItem.createMany({
+      data: [
+        {
+          invoiceId: invoice2.id,
+          description: 'iPhone 13 Cases Mixed Colors (Pack of 30)',
+          quantity: 30,
+          unit_price: 700,
+          tax_rate: 18,
+          line_total: 24780,
+        },
+        {
+          invoiceId: invoice2.id,
+          description: 'USB-C Charging Cables (Pack of 40)',
+          quantity: 40,
+          unit_price: 200,
+          tax_rate: 18,
+          line_total: 9440,
+        },
+      ],
+    });
+  }
+
+  if (supplier4Profile) {
+    // Invoice 3: DRAFT invoice for FREE supplier
+    const invoice3 = await prisma.invoice.create({
+      data: {
+        supplierId: supplier4Profile.id,
+        retailer_name_snapshot: 'Mobile Shop ISB',
+        retailer_phone_snapshot: '+92-333-5551234',
+        retailer_address_snapshot: 'F-10 Markaz, Islamabad',
+        invoice_number: 'INV-2026-0001',
+        invoice_date: new Date('2026-01-14'),
+        due_date: new Date('2026-01-29'),
+        currency: 'PKR',
+        subtotal: 12000,
+        tax_total: 2160,
+        discount_total: 500,
+        total: 13660,
+        status: 'DRAFT',
+        notes: 'First time customer discount',
+      },
+    });
+
+    await prisma.invoiceLineItem.createMany({
+      data: [
+        {
+          invoiceId: invoice3.id,
+          description: 'Xiaomi Redmi Cases (Pack of 20)',
+          quantity: 20,
+          unit_price: 600,
+          tax_rate: 18,
+          line_total: 14160,
+        },
+      ],
     });
   }
 
