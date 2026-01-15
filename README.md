@@ -46,7 +46,12 @@ All passwords: `password123`
 
 **Admin:** admin@test.com  
 **Retailers:** retailer@test.com, retailer2@test.com  
-**Suppliers:** supplier1@test.com through supplier5@test.com
+**Suppliers:**
+- supplier1@test.com (PRO, Verified)
+- supplier2@test.com (PRO, Verified)
+- supplier3@test.com (FREE, Unverified)
+- supplier4@test.com (FREE, Verified)
+- supplier5@test.com (PRO, Verified)
 
 ## ✅ Implemented Features
 
@@ -58,6 +63,7 @@ All passwords: `password123`
 - ✅ Supplier profiles with geolocation
 - ✅ Inventory management with subscription gating
 - ✅ Role-based access control
+- ✅ 2-tier subscription system (FREE/PRO)
 
 ### Frontend
 - ✅ React + TypeScript + TanStack Query
@@ -65,10 +71,27 @@ All passwords: `password123`
 - ✅ AppContext fetching cities dynamically
 - ✅ Axios client with auth interceptors
 
+### Subscription Tiers
+
+**FREE Tier (Default for new suppliers):**
+- Inventory limit: **25 SKUs maximum**
+- Quantity visibility: **IN_STOCK_ONLY** (retailers never see exact numbers)
+- Verified badge: Not available
+- Search ranking: Standard (appears below PRO suppliers)
+- Backend enforces all restrictions
+
+**PRO Tier:**
+- Inventory limit: **UNLIMITED**
+- Quantity visibility: **EXACT_QUANTITY allowed** (suppliers choose visibility mode)
+- Verified badge: Eligible for verification
+- Search ranking: **Boosted** (appears above FREE suppliers)
+- All premium features enabled
+
 ### Critical Business Rules
 - ✅ NO PRICES shown to retailers (backend enforces)
-- ✅ Subscription gating (50/500/unlimited items)
-- ✅ Search ranking: verified > matchCount > updatedAt
+- ✅ Subscription gating (FREE: 25 items, PRO: unlimited)
+- ✅ Search ranking: PRO > verified > matchCount > updatedAt
+- ✅ FREE suppliers forced to IN_STOCK_ONLY visibility
 - ✅ Multi-city support (no hardcoding)
 - ✅ Public search (no auth required)
 
@@ -111,9 +134,10 @@ Authorization: Bearer <token>
 case ↔ cover | glass ↔ protector | charger ↔ adaptor | cable ↔ wire
 
 **Ranking:**  
-1. Verified suppliers first
-2. Higher match count
-3. Recently updated
+1. **PRO suppliers first**
+2. Verified suppliers next
+3. Higher match count
+4. Recently updated
 
 ## 🛠️ Tech Stack
 
@@ -122,9 +146,9 @@ case ↔ cover | glass ↔ protector | charger ↔ adaptor | cable ↔ wire
 
 ## 📋 Roadmap
 
-**Completed:** Backend foundation, auth, search, inventory, frontend integration  
-**Next:** Map clustering, authentication UI, supplier dashboard wiring  
-**Planned:** Quotes, chat, admin panel, subscriptions, analytics, sales
+**Completed:** Backend foundation, auth, search, inventory, 2-tier subscriptions, frontend integration  
+**Next:** Map clustering, authentication UI, supplier dashboard wiring, upgrade CTAs  
+**Planned:** Quotes, chat, admin panel, analytics, sales, receipt import
 
 ## 🆘 Support
 
