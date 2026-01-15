@@ -56,6 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (e) {
+        console.warn('Failed to parse stored user data:', e);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       }

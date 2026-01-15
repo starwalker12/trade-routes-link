@@ -16,6 +16,18 @@ const searchSchema = z.object({
   limit: z.number().int().positive().max(100).optional().default(50),
 });
 
+/**
+ * Search result structure returned to the frontend.
+ * Results are grouped by supplier, with each supplier containing matching products.
+ * 
+ * @property supplier - Complete supplier profile with location details
+ * @property supplier.city - Embedded city information (id and name)
+ * @property supplier.marketArea - Embedded market area information (id and name)
+ * @property products - Array of products that match the search query for this supplier
+ * @property products[].visibilityMode - How stock is displayed (EXACT_QUANTITY or IN_STOCK_ONLY)
+ * @property products[].inStock - Boolean indicating if product is currently in stock
+ * @property matchCount - Total number of products matched for this supplier
+ */
 interface SupplierSearchResult {
   supplier: {
     id: string;
@@ -28,10 +40,12 @@ interface SupplierSearchResult {
     whatsappNumber: string | null;
     phoneNumber: string;
     verifiedStatus: VerifiedStatus;
+    /** City information (embedded) */
     city: {
       id: string;
       name: string;
     };
+    /** Market area information (embedded) */
     marketArea: {
       id: string;
       name: string;

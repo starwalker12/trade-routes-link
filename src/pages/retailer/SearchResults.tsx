@@ -283,7 +283,7 @@ function SupplierCard({ result }: { result: SearchResult }) {
               {isVerified && <VerifiedBadge size="sm" />}
             </div>
             <p className="text-sm text-muted-foreground">
-              {supplier.marketArea?.name || 'Market Area'}, {supplier.city?.name || 'City'}
+              {[supplier.marketArea?.name, supplier.city?.name].filter(Boolean).join(', ') || 'Location not specified'}
             </p>
           </div>
         </div>

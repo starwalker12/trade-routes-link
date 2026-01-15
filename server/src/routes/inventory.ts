@@ -16,7 +16,7 @@ const INVENTORY_LIMITS: Record<Plan, number | null> = {
 };
 
 const createInventorySchema = z.object({
-  productTitle: z.string().min(1),
+  title: z.string().min(1),
   category: z.string().min(1),
   brand: z.string().optional(),
   phoneModel: z.string().optional(),
@@ -91,14 +91,14 @@ router.post('/', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest,
     await checkInventoryLimit(profile.id);
 
     const searchText = normalizeText(
-      [data.productTitle, data.category, data.brand, data.phoneModel, data.variant]
+      [data.title, data.category, data.brand, data.phoneModel, data.variant]
         .filter(Boolean)
         .join(' ')
     );
 
     let product = await prisma.product.findFirst({
       where: {
-        title: data.productTitle,
+        title: data.title,
         category: data.category,
         brand: data.brand || null,
         phoneModel: data.phoneModel || null,
@@ -109,7 +109,7 @@ router.post('/', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest,
     if (!product) {
       product = await prisma.product.create({
         data: {
-          title: data.productTitle,
+          title: data.title,
           category: data.category,
           brand: data.brand,
           phoneModel: data.phoneModel,
