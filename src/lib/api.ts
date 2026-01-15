@@ -211,7 +211,7 @@ export const auth = {
     phone?: string;
     password: string;
     role: 'RETAILER' | 'SUPPLIER';
-    profile: any;
+    profile: Record<string, unknown>;
   }) => api.post('/auth/register', data),
 
   login: (data: { email?: string; phone?: string; password: string }) =>
