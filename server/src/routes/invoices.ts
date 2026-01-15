@@ -530,29 +530,73 @@ router.post(
       // Add watermark to first page
       addWatermark();
 
-      // Header
-      doc.fontSize(20).text(supplier.shopName, { align: 'left' });
-      doc.fontSize(10).text(supplier.address);
-      doc.text(`Phone: ${supplier.phoneNumber}`);
-      if (supplier.whatsappNumber) {
-        doc.text(`WhatsApp: ${supplier.whatsappNumber}`);
+      // Header with logo
+      let headerStartY = 50;
+      const leftMargin = 50;
+      
+      if (supplier.logoUrl) {
+        const logoPath = path.join(process.cwd(), supplier.logoUrl);
+        
+        // Check if logo file exists
+        if (fs.existsSync(logoPath)) {
+          try {
+            // Render logo at top-left
+            doc.image(logoPath, leftMargin, headerStartY, { 
+              height: 60,
+              fit: [100, 60], // max width 100px, max height 60px
+            });
+            
+            // Company details beside logo
+            const logoWidth = 110; // logo max width + some padding
+            doc.fontSize(14).font('Helvetica-Bold').text(supplier.shopName, leftMargin + logoWidth, headerStartY);
+            doc.fontSize(10).font('Helvetica').text(supplier.address, leftMargin + logoWidth, headerStartY + 20);
+            doc.text(`Phone: ${supplier.phoneNumber}`, leftMargin + logoWidth, headerStartY + 35);
+            if (supplier.whatsappNumber) {
+              doc.text(`WhatsApp: ${supplier.whatsappNumber}`, leftMargin + logoWidth, headerStartY + 50);
+            }
+          } catch (error) {
+            console.warn('Failed to render logo image:', error);
+            // Fall back to text-only header
+            doc.fontSize(16).font('Helvetica-Bold').text(supplier.shopName, leftMargin, headerStartY);
+            doc.fontSize(10).font('Helvetica').text(supplier.address, leftMargin, headerStartY + 20);
+            doc.text(`Phone: ${supplier.phoneNumber}`, leftMargin, headerStartY + 35);
+            if (supplier.whatsappNumber) {
+              doc.text(`WhatsApp: ${supplier.whatsappNumber}`, leftMargin, headerStartY + 50);
+            }
+          }
+        } else {
+          console.warn('Logo file not found:', logoPath);
+          // Fall back to text-only header
+          doc.fontSize(16).font('Helvetica-Bold').text(supplier.shopName, leftMargin, headerStartY);
+          doc.fontSize(10).font('Helvetica').text(supplier.address, leftMargin, headerStartY + 20);
+          doc.text(`Phone: ${supplier.phoneNumber}`, leftMargin, headerStartY + 35);
+          if (supplier.whatsappNumber) {
+            doc.text(`WhatsApp: ${supplier.whatsappNumber}`, leftMargin, headerStartY + 50);
+          }
+        }
+      } else {
+        // No logo - text-only header with larger font
+        doc.fontSize(16).font('Helvetica-Bold').text(supplier.shopName, leftMargin, headerStartY);
+        doc.fontSize(10).font('Helvetica').text(supplier.address, leftMargin, headerStartY + 20);
+        doc.text(`Phone: ${supplier.phoneNumber}`, leftMargin, headerStartY + 35);
+        if (supplier.whatsappNumber) {
+          doc.text(`WhatsApp: ${supplier.whatsappNumber}`, leftMargin, headerStartY + 50);
+        }
       }
+
+      // Invoice metadata (right-aligned, same Y level as header)
+      doc.fontSize(10).font('Helvetica-Bold').text(`Invoice #${invoice.invoice_number}`, 400, headerStartY, { align: 'right' });
+      doc.fontSize(10).font('Helvetica').text(`Date: ${invoice.invoice_date.toLocaleDateString()}`, 400, headerStartY + 15, { align: 'right' });
+      if (invoice.due_date) {
+        doc.text(`Due Date: ${invoice.due_date.toLocaleDateString()}`, 400, headerStartY + 30, { align: 'right' });
+      }
+
+      // Move past header section
+      doc.y = headerStartY + 80;
       doc.moveDown();
 
-      // Invoice Info
-      doc.fontSize(16).text('INVOICE', { align: 'center' });
-      doc.fontSize(10);
-      doc.text(`Invoice #: ${invoice.invoice_number}`, { align: 'right' });
-      doc.text(
-        `Date: ${invoice.invoice_date.toLocaleDateString()}`,
-        { align: 'right' }
-      );
-      if (invoice.due_date) {
-        doc.text(
-          `Due Date: ${invoice.due_date.toLocaleDateString()}`,
-          { align: 'right' }
-        );
-      }
+      // Invoice Title
+      doc.fontSize(16).font('Helvetica-Bold').text('INVOICE', { align: 'center' });
       doc.moveDown();
 
       // Billed To
