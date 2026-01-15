@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { invoices, Invoice } from '@/lib/api';
+import { invoices, Invoice, BASE_URL } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -32,11 +32,15 @@ const InvoicesList = () => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['invoices', page, status],
     queryFn: async () => {
-      const params: any = { page, limit };
+      const params: {
+        page: number;
+        limit: number;
+        status?: 'DRAFT' | 'SENT' | 'PAID' | 'CANCELLED';
+        sort: string;
+      } = { page, limit, sort: 'invoice_date:desc' };
       if (status !== 'ALL') {
         params.status = status;
       }
-      params.sort = 'invoice_date:desc';
       const response = await invoices.list(params);
       return response.data;
     },
@@ -47,8 +51,9 @@ const InvoicesList = () => {
       const response = await invoices.generatePDF(invoiceId);
       toast.success('PDF generated successfully!');
       refetch();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to generate PDF');
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err.response?.data?.error || 'Failed to generate PDF');
     }
   };
 
@@ -96,7 +101,7 @@ const InvoicesList = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>All Invoices</CardTitle>
-            <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+            <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
@@ -185,7 +190,7 @@ const InvoicesList = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => window.open(`http://localhost:3001${invoice.pdf_url}`, '_blank')}
+                              onClick={() => window.open(`${BASE_URL}${invoice.pdf_url}`, '_blank')}
                             >
                               <Download className="w-4 h-4" />
                             </Button>

@@ -37,6 +37,9 @@ api.interceptors.response.use(
 
 export default api;
 
+// Base URL for non-API resources (like PDFs)
+export const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
+
 // ============================================
 // TYPE DEFINITIONS
 // ============================================
