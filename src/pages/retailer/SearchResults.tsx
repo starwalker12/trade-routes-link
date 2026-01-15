@@ -30,11 +30,16 @@ export default function SearchResults() {
     queryKey: ['search', searchQuery, selectedCity?.id],
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
-      const response = await search.products({
-        query: searchQuery,
-        cityId: selectedCity?.id,
-      });
-      return response.data;
+      try {
+        const response = await search.products({
+          query: searchQuery,
+          cityId: selectedCity?.id,
+        });
+        return response.data;
+      } catch (err) {
+        console.error('Search error:', err);
+        throw err;
+      }
     },
     enabled: !!searchQuery.trim(),
   });
