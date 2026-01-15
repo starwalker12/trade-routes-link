@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { Edit, FileText, Download, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { invoices, BASE_URL, openPdfUrl } from '@/lib/api';
+import { invoices, openPdfUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {

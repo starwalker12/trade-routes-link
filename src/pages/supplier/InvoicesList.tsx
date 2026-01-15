@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { invoices, Invoice, BASE_URL, openPdfUrl } from '@/lib/api';
+import { invoices, Invoice, openPdfUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   Table,
