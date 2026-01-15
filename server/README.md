@@ -98,7 +98,34 @@ Server will run on `http://localhost:3001`
 - `PUT /api/inventory/:itemId` - Update inventory item (supplier only)
 - `DELETE /api/inventory/:itemId` - Delete inventory item (supplier only)
 
+### Invoices (Supplier Only)
+- `GET /api/supplier/invoices` - List invoices (with pagination)
+- `POST /api/supplier/invoices` - Create new invoice
+- `GET /api/supplier/invoices/:id` - Get invoice details
+- `PATCH /api/supplier/invoices/:id` - Update invoice
+- `POST /api/supplier/invoices/:id/items` - Manage invoice line items
+- `POST /api/supplier/invoices/:id/generate-pdf` - Generate PDF
+
+### Supplier Logo
+- `POST /api/supplier/logo` - Upload company logo (supplier only)
+  - Accepts: PNG, JPEG, WebP
+  - Max size: 2MB
+  - Requires authentication (JWT, supplier role)
+  - Returns: `{ success: boolean, logoUrl: string }`
+  - Uploaded to: `/server/uploads/logos/`
+  - Updates: SupplierProfile.logoUrl
+
 ## Features
+
+### Supplier Logo Upload
+Suppliers can upload a company logo that appears on generated invoice PDFs:
+- **Upload**: Through Supplier Settings page
+- **Storage**: `/server/uploads/logos/<supplierId>-<timestamp>.<ext>`
+- **Formats**: PNG, JPEG, WebP
+- **Max Size**: 2MB
+- **PDF Rendering**: Logo appears at top-left of invoice PDFs (60px height, aspect ratio maintained)
+- **Fallback**: If no logo or file missing, displays company name as text with larger font
+- **Watermark**: FREE plan invoices still show watermark, PRO plan doesn't (existing behavior preserved)
 
 ### Synonym Mapping
 Search supports intelligent synonym matching:
