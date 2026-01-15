@@ -192,15 +192,9 @@ router.put('/:itemId', authenticate, requireRole('SUPPLIER'), async (req: AuthRe
       throw new AppError(403, 'FREE tier suppliers can only use IN_STOCK_ONLY visibility mode. Upgrade to PRO to show exact quantities.', 'upgrade_required');
     }
 
-    // Force IN_STOCK_ONLY for FREE suppliers if they try to change it
-    const updateData = { ...data };
-    if (profile.subscription?.plan === 'FREE' && data.visibilityMode) {
-      updateData.visibilityMode = VisibilityMode.IN_STOCK_ONLY;
-    }
-
     const updated = await prisma.inventoryItem.update({
       where: { id: itemId },
-      data: updateData,
+      data,
       include: {
         product: true,
       },
