@@ -54,6 +54,7 @@ export default function SupplierSettings() {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       toast.error('Invalid file type. Please upload PNG, JPEG, or WebP image.');
+      event.target.value = ''; // Reset input
       return;
     }
 
@@ -61,11 +62,13 @@ export default function SupplierSettings() {
     const maxSize = 2 * 1024 * 1024; // 2MB in bytes
     if (file.size > maxSize) {
       toast.error('File too large. Maximum size is 2MB.');
+      event.target.value = ''; // Reset input
       return;
     }
 
     setIsUploading(true);
     uploadLogoMutation.mutate(file);
+    event.target.value = ''; // Reset input to allow re-uploading same file
   };
 
   const triggerFileInput = () => {

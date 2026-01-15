@@ -247,9 +247,7 @@ export const suppliers = {
   uploadLogo: (file: File) => {
     const formData = new FormData();
     formData.append('logo', file);
-    return api.post<{ success: boolean; logoUrl: string }>('/supplier/logo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return api.post<{ success: boolean; logoUrl: string }>('/supplier/logo', formData);
   },
 };
 
