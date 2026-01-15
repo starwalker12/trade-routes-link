@@ -1,9 +1,8 @@
 import { Router, Response } from 'express';
-import { PrismaClient, Role, VerifiedStatus } from '@prisma/client';
+import { PrismaClient, VerifiedStatus } from '@prisma/client';
 import { z } from 'zod';
-import { authenticate, AuthRequest } from '../middleware/auth.js';
 import { expandSearchWithSynonyms } from '../utils/synonyms.js';
-import { normalizeText, calculateRelevanceScore } from '../utils/search.js';
+import { normalizeText } from '../utils/search.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -11,46 +10,69 @@ const prisma = new PrismaClient();
 const searchSchema = z.object({
   query: z.string().min(1),
   cityId: z.string().uuid().optional(),
+  categoryFilter: z.string().optional(),
+  brandFilter: z.string().optional(),
+  verifiedOnly: z.boolean().optional(),
   limit: z.number().int().positive().max(100).optional().default(50),
 });
 
-interface SearchResult {
-  id: string;
-  title: string;
-  category: string;
-  brand: string | null;
-  phoneModel: string | null;
-  variant: string | null;
-  suppliers: Array<{
-    supplierId: string;
+interface SupplierSearchResult {
+  supplier: {
+    id: string;
     shopName: string;
-    cityName: string;
-    marketName: string;
+    cityId: string;
+    marketAreaId: string;
+    address: string;
+    lat: number;
+    lng: number;
+    whatsappNumber: string | null;
+    phoneNumber: string;
     verifiedStatus: VerifiedStatus;
-    hasStock: boolean;
-    quantity?: number;
-    visibilityMode?: string;
-    updatedAt: Date;
+    city: {
+      id: string;
+      name: string;
+    };
+    marketArea: {
+      id: string;
+      name: string;
+    };
+  };
+  products: Array<{
+    product: {
+      id: string;
+      title: string;
+      category: string;
+      brand: string | null;
+      phoneModel: string | null;
+      variant: string | null;
+    };
+    visibilityMode: string;
+    inStock: boolean;
+    lastUpdated: string;
   }>;
+  matchCount: number;
 }
 
-router.get('/', authenticate, async (req: AuthRequest, res: Response, next) => {
+// Make search endpoint public (no authentication required for search)
+router.post('/', async (req, res: Response, next) => {
   try {
-    const { query, cityId, limit } = searchSchema.parse({
-      query: req.query.query,
-      cityId: req.query.cityId,
-      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
-    });
+    const { query, cityId, categoryFilter, brandFilter, verifiedOnly, limit } = searchSchema.parse(req.body);
 
-    const userRole = req.user!.role;
     const normalizedQuery = normalizeText(query);
     const expandedTerms = expandSearchWithSynonyms(normalizedQuery);
 
+    // Find products that match the search
     const products = await prisma.product.findMany({
       where: {
-        OR: expandedTerms.map(term => ({
-          searchText: { contains: term },
-        })),
+        AND: [
+          {
+            OR: expandedTerms.map(term => ({
+              searchText: { contains: term },
+            })),
+          },
+          ...(categoryFilter ? [{ category: categoryFilter }] : []),
+          ...(brandFilter ? [{ brand: brandFilter }] : []),
+        ],
       },
       include: {
         inventoryItems: {
@@ -59,6 +81,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next) => {
             ...(cityId && {
               supplier: {
                 cityId,
+                ...(verifiedOnly && { verifiedStatus: VerifiedStatus.VERIFIED }),
               },
             }),
           },
@@ -74,49 +97,80 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next) => {
       },
     });
 
-    const results: SearchResult[] = products
-      .filter(product => product.inventoryItems.length > 0)
-      .map(product => {
-        const relevanceScore = calculateRelevanceScore(product.searchText, expandedTerms);
+    // Group by supplier
+    const supplierMap = new Map<string, SupplierSearchResult>();
+
+    products.forEach(product => {
+      product.inventoryItems.forEach(item => {
+        const supplierId = item.supplierId;
         
-        const suppliers = product.inventoryItems.map(item => ({
-          supplierId: item.supplierId,
-          shopName: item.supplier.shopName,
-          cityName: item.supplier.city.name,
-          marketName: item.supplier.marketArea.name,
-          verifiedStatus: item.supplier.verifiedStatus,
-          hasStock: item.quantity > 0,
-          quantity: userRole === Role.SUPPLIER ? item.quantity : undefined,
-          visibilityMode: userRole === Role.SUPPLIER ? item.visibilityMode : undefined,
-          updatedAt: item.updatedAt,
-        }));
+        if (!supplierMap.has(supplierId)) {
+          supplierMap.set(supplierId, {
+            supplier: {
+              id: item.supplier.id,
+              shopName: item.supplier.shopName,
+              cityId: item.supplier.cityId,
+              marketAreaId: item.supplier.marketAreaId,
+              address: item.supplier.address,
+              lat: item.supplier.lat,
+              lng: item.supplier.lng,
+              whatsappNumber: item.supplier.whatsappNumber,
+              phoneNumber: item.supplier.phoneNumber,
+              verifiedStatus: item.supplier.verifiedStatus,
+              city: {
+                id: item.supplier.city.id,
+                name: item.supplier.city.name,
+              },
+              marketArea: {
+                id: item.supplier.marketArea.id,
+                name: item.supplier.marketArea.name,
+              },
+            },
+            products: [],
+            matchCount: 0,
+          });
+        }
 
-        suppliers.sort((a, b) => {
-          if (a.verifiedStatus === VerifiedStatus.VERIFIED && b.verifiedStatus !== VerifiedStatus.VERIFIED) return -1;
-          if (a.verifiedStatus !== VerifiedStatus.VERIFIED && b.verifiedStatus === VerifiedStatus.VERIFIED) return 1;
-          
-          if (a.hasStock && !b.hasStock) return -1;
-          if (!a.hasStock && b.hasStock) return 1;
-          
-          return b.updatedAt.getTime() - a.updatedAt.getTime();
+        const supplierResult = supplierMap.get(supplierId)!;
+        supplierResult.products.push({
+          product: {
+            id: product.id,
+            title: product.title,
+            category: product.category,
+            brand: product.brand,
+            phoneModel: product.phoneModel,
+            variant: product.variant,
+          },
+          visibilityMode: item.visibilityMode,
+          inStock: item.quantity > 0,
+          lastUpdated: item.updatedAt.toISOString(),
         });
+        supplierResult.matchCount++;
+      });
+    });
 
-        return {
-          id: product.id,
-          title: product.title,
-          category: product.category,
-          brand: product.brand,
-          phoneModel: product.phoneModel,
-          variant: product.variant,
-          suppliers,
-          _relevanceScore: relevanceScore,
-        };
-      })
-      .sort((a, b) => (b._relevanceScore || 0) - (a._relevanceScore || 0))
-      .slice(0, limit)
-      .map(({ _relevanceScore, ...result }) => result);
+    // Convert to array and sort by ranking algorithm
+    const results = Array.from(supplierMap.values()).sort((a, b) => {
+      // 1. Verified suppliers first
+      if (a.supplier.verifiedStatus === VerifiedStatus.VERIFIED && b.supplier.verifiedStatus !== VerifiedStatus.VERIFIED) {
+        return -1;
+      }
+      if (a.supplier.verifiedStatus !== VerifiedStatus.VERIFIED && b.supplier.verifiedStatus === VerifiedStatus.VERIFIED) {
+        return 1;
+      }
+      
+      // 2. Higher match count next
+      if (a.matchCount !== b.matchCount) {
+        return b.matchCount - a.matchCount;
+      }
+      
+      // 3. Recently updated next (use most recent product update)
+      const aLastUpdate = Math.max(...a.products.map(p => new Date(p.lastUpdated).getTime()));
+      const bLastUpdate = Math.max(...b.products.map(p => new Date(p.lastUpdated).getTime()));
+      return bLastUpdate - aLastUpdate;
+    });
 
-    res.json(results);
+    res.json(results.slice(0, limit));
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ error: 'Validation error', details: error.errors });
