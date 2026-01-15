@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, SlidersHorizontal, MapPin, List, X, Phone, MessageCircle, FileText, Clock } from 'lucide-react';
+import { Search, SlidersHorizontal, MapPin, List, X, Phone, MessageCircle, FileText, Clock, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useApp } from '@/contexts/AppContext';
-import { suppliers, products, categories, brands, cities } from '@/lib/mock-data';
+import { categories, brands, cities } from '@/lib/mock-data';
+import { search, type SearchResult } from '@/lib/api';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { NoSearchResults } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
@@ -23,24 +25,36 @@ export default function SearchResults() {
   const [showInStockOnly, setShowInStockOnly] = useState(false);
   const { selectedCity } = useApp();
 
-  // Filter suppliers based on selected city
-  const filteredSuppliers = suppliers.filter((s) => 
-    !selectedCity || s.cityId === selectedCity.id
-  );
-
-  // Get products for each supplier
-  const supplierProducts = filteredSuppliers.map((supplier) => ({
-    supplier,
-    products: products.filter((p) => p.supplierId === supplier.id),
-  }));
+  // Fetch search results from API
+  const { data: searchResults = [], isLoading, error } = useQuery({
+    queryKey: ['search', searchQuery, selectedCity?.id],
+    queryFn: async () => {
+      if (!searchQuery.trim()) return [];
+      try {
+        const response = await search.products({
+          query: searchQuery,
+          cityId: selectedCity?.id,
+        });
+        return response.data;
+      } catch (err) {
+        console.error('Search error:', err);
+        throw err;
+      }
+    },
+    enabled: !!searchQuery.trim(),
+  });
 
   // Sort results
-  const sortedResults = [...supplierProducts].sort((a, b) => {
+  const sortedResults = [...searchResults].sort((a, b) => {
     if (sortBy === 'verified') {
-      return (b.supplier.isVerified ? 1 : 0) - (a.supplier.isVerified ? 1 : 0);
+      const aVerified = a.supplier.verifiedStatus === 'VERIFIED' ? 1 : 0;
+      const bVerified = b.supplier.verifiedStatus === 'VERIFIED' ? 1 : 0;
+      return bVerified - aVerified;
     }
     if (sortBy === 'stock') {
-      return b.products.reduce((sum, p) => sum + p.quantity, 0) - a.products.reduce((sum, p) => sum + p.quantity, 0);
+      const aStock = a.products.filter(p => p.inStock).length;
+      const bStock = b.products.filter(p => p.inStock).length;
+      return bStock - aStock;
     }
     return 0;
   });
@@ -201,21 +215,35 @@ export default function SearchResults() {
       {/* Results Count */}
       <div className="border-b border-border bg-card px-4 py-2">
         <p className="text-sm text-muted-foreground">
-          {sortedResults.length} suppliers found in {selectedCity?.name || 'all cities'}
+          {isLoading ? (
+            'Searching...'
+          ) : error ? (
+            'Error loading results'
+          ) : (
+            `${sortedResults.length} suppliers found in ${selectedCity?.name || 'all cities'}`
+          )}
         </p>
       </div>
 
       {/* Results */}
       <div className="p-4">
-        {viewMode === 'list' ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="rounded-lg border border-border bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Failed to load search results. Please try again.
+            </p>
+          </div>
+        ) : viewMode === 'list' ? (
           sortedResults.length > 0 ? (
             <div className="space-y-3">
-              {sortedResults.map(({ supplier, products: supplierProds }) => (
+              {sortedResults.map((result) => (
                 <SupplierCard
-                  key={supplier.id}
-                  supplier={supplier}
-                  productCount={supplierProds.length}
-                  totalStock={supplierProds.reduce((sum, p) => sum + p.quantity, 0)}
+                  key={result.supplier.id}
+                  result={result}
                 />
               ))}
             </div>
@@ -223,18 +251,18 @@ export default function SearchResults() {
             <NoSearchResults />
           )
         ) : (
-          <MapView suppliers={filteredSuppliers} />
+          <MapView results={sortedResults} />
         )}
       </div>
     </div>
   );
 }
 
-function SupplierCard({ supplier, productCount, totalStock }: { 
-  supplier: typeof suppliers[0];
-  productCount: number;
-  totalStock: number;
-}) {
+function SupplierCard({ result }: { result: SearchResult }) {
+  const { supplier, products, matchCount } = result;
+  const inStockCount = products.filter(p => p.inStock).length;
+  const isVerified = supplier.verifiedStatus === 'VERIFIED';
+  
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-start justify-between">
@@ -252,10 +280,10 @@ function SupplierCard({ supplier, productCount, totalStock }: {
               >
                 {supplier.shopName}
               </Link>
-              {supplier.isVerified && <VerifiedBadge size="sm" />}
+              {isVerified && <VerifiedBadge size="sm" />}
             </div>
             <p className="text-sm text-muted-foreground">
-              {supplier.marketName}, {supplier.cityName}
+              {[supplier.marketArea?.name, supplier.city?.name].filter(Boolean).join(', ') || 'Location not specified'}
             </p>
           </div>
         </div>
@@ -264,13 +292,14 @@ function SupplierCard({ supplier, productCount, totalStock }: {
       <div className="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
         <span className="flex items-center gap-1">
           <Badge variant="secondary" className="font-normal">
-            {totalStock > 0 ? `${totalStock.toLocaleString()} in stock` : 'Check availability'}
+            {inStockCount > 0 ? `${inStockCount} product${inStockCount !== 1 ? 's' : ''} in stock` : 'Check availability'}
           </Badge>
         </span>
-        <span className="flex items-center gap-1">
-          <Clock className="h-3.5 w-3.5" />
-          {supplier.lastActive}
-        </span>
+        {matchCount > 0 && (
+          <span className="text-xs">
+            {matchCount} match{matchCount !== 1 ? 'es' : ''}
+          </span>
+        )}
       </div>
 
       <div className="mt-4 flex gap-2">
@@ -289,13 +318,13 @@ function SupplierCard({ supplier, productCount, totalStock }: {
   );
 }
 
-function MapView({ suppliers }: { suppliers: typeof import('@/lib/mock-data').suppliers }) {
+function MapView({ results }: { results: SearchResult[] }) {
   const { selectedCity } = useApp();
   
   // Group by market for cluster view
   const marketClusters = selectedCity?.markets.map((market) => ({
     market,
-    suppliers: suppliers.filter((s) => s.marketId === market.id),
+    suppliers: results.filter((r) => r.supplier.marketAreaId === market.id),
   })) || [];
 
   return (

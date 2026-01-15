@@ -1,0 +1,357 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model User {
+  id           String   @id @default(uuid())
+  role         Role     @default(RETAILER)
+  phone        String?  @unique
+  email        String?  @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  retailerProfile RetailerProfile?
+  supplierProfile SupplierProfile?
+  chatMessages    ChatMessage[]
+  auditLogs       AuditLog[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+enum Role {
+  RETAILER
+  SUPPLIER
+  ADMIN
+}
+
+// ============================================
+// LOCATION ENTITIES
+// ============================================
+
+model City {
+  id   String @id @default(uuid())
+  name String @unique
+
+  markets          MarketArea[]
+  supplierProfiles SupplierProfile[]
+  retailerProfiles RetailerProfile[]
+
+  @@index([name])
+}
+
+model MarketArea {
+  id     String @id @default(uuid())
+  cityId String
+  name   String
+
+  city             City              @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  supplierProfiles SupplierProfile[]
+
+  @@unique([cityId, name])
+  @@index([cityId])
+}
+
+// ============================================
+// PROFILES
+// ============================================
+
+model SupplierProfile {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  shopName       String
+  cityId         String
+  marketAreaId   String
+  address        String
+  lat            Float
+  lng            Float
+  whatsappNumber String?
+  phoneNumber    String
+  verifiedStatus VerifiedStatus @default(PENDING)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city             City               @relation(fields: [cityId], references: [id])
+  marketArea       MarketArea         @relation(fields: [marketAreaId], references: [id])
+  inventoryItems   InventoryItem[]
+  quoteRequests    QuoteRequest[]
+  chatThreads      ChatThread[]
+  sales            Sale[]
+  retailerCustomers RetailerCustomer[]
+  subscription     Subscription?
+
+  @@index([cityId])
+  @@index([marketAreaId])
+  @@index([verifiedStatus])
+}
+
+enum VerifiedStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model RetailerProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  shopName    String?
+  cityId      String
+  areaText    String?
+  phoneNumber String?
+  createdAt   DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city          City           @relation(fields: [cityId], references: [id])
+  quoteRequests QuoteRequest[]
+  chatThreads   ChatThread[]
+
+  @@index([cityId])
+}
+
+// ============================================
+// PRODUCT CATALOG
+// ============================================
+
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+
+  @@index([name])
+}
+
+model Brand {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  phoneModels PhoneModel[]
+
+  @@index([name])
+}
+
+model PhoneModel {
+  id      String @id @default(uuid())
+  brandId String
+  name    String
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, name])
+  @@index([brandId])
+}
+
+model Product {
+  id         String  @id @default(uuid())
+  title      String
+  category   String
+  brand      String?
+  phoneModel String?
+  variant    String?
+  searchText String // normalized for search
+
+  inventoryItems InventoryItem[]
+  quoteRequests  QuoteRequest[]
+  saleItems      SaleItem[]
+
+  @@index([searchText])
+  @@index([category])
+  @@index([brand])
+}
+
+// ============================================
+// INVENTORY MANAGEMENT
+// ============================================
+
+model InventoryItem {
+  id             String         @id @default(uuid())
+  supplierId     String
+  productId      String
+  quantity       Int
+  visibilityMode VisibilityMode @default(EXACT_QUANTITY)
+  updatedAt      DateTime       @updatedAt
+
+  supplier SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product  Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, productId])
+  @@index([supplierId])
+  @@index([productId])
+  @@index([updatedAt])
+}
+
+enum VisibilityMode {
+  EXACT_QUANTITY
+  IN_STOCK_ONLY
+}
+
+// ============================================
+// QUOTE REQUESTS
+// ============================================
+
+model QuoteRequest {
+  id         String      @id @default(uuid())
+  retailerId String
+  supplierId String
+  productId  String
+  quantity   Int
+  note       String?
+  status     QuoteStatus @default(PENDING)
+  createdAt  DateTime    @default(now())
+
+  retailer RetailerProfile @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  supplier SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product  Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([retailerId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum QuoteStatus {
+  PENDING
+  RESPONDED
+  ACCEPTED
+  REJECTED
+}
+
+// ============================================
+// CHAT SYSTEM
+// ============================================
+
+model ChatThread {
+  id         String   @id @default(uuid())
+  retailerId String
+  supplierId String
+  createdAt  DateTime @default(now())
+
+  retailer RetailerProfile @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  supplier SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@unique([retailerId, supplierId])
+  @@index([retailerId])
+  @@index([supplierId])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  threadId  String
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([createdAt])
+}
+
+// ============================================
+// SALES & POS
+// ============================================
+
+model Sale {
+  id                 String   @id @default(uuid())
+  supplierId         String
+  retailerCustomerId String?
+  totalAmount        Float
+  createdAt          DateTime @default(now())
+
+  supplier         SupplierProfile   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  retailerCustomer RetailerCustomer? @relation(fields: [retailerCustomerId], references: [id], onDelete: SetNull)
+  items            SaleItem[]
+
+  @@index([supplierId])
+  @@index([retailerCustomerId])
+  @@index([createdAt])
+}
+
+model SaleItem {
+  id        String @id @default(uuid())
+  saleId    String
+  productId String
+  quantity  Int
+  price     Float
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+}
+
+model RetailerCustomer {
+  id         String   @id @default(uuid())
+  supplierId String
+  name       String
+  phone      String?
+  shopName   String?
+  createdAt  DateTime @default(now())
+
+  supplier SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  sales    Sale[]
+
+  @@index([supplierId])
+}
+
+// ============================================
+// SUBSCRIPTION SYSTEM
+// ============================================
+
+model Subscription {
+  id         String             @id @default(uuid())
+  supplierId String             @unique
+  plan       Plan               @default(FREE)
+  status     SubscriptionStatus @default(ACTIVE)
+  startedAt  DateTime           @default(now())
+  endsAt     DateTime?
+
+  supplier SupplierProfile @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+// ============================================
+// AUDIT & LOGGING
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  entity      String
+  entityId    String
+  action      String
+  actorUserId String?
+  beforeJson  Json?
+  afterJson   Json?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([actorUserId])
+  @@index([createdAt])
+}

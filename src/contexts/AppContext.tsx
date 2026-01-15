@@ -1,16 +1,14 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { cities, City } from '@/lib/mock-data';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { cities as citiesApi, City } from '@/lib/api';
 
-export type UserRole = 'retailer' | 'supplier' | 'admin' | null;
+export type UserRole = 'RETAILER' | 'SUPPLIER' | 'ADMIN' | null;
 
 interface User {
   id: string;
-  name: string;
-  email?: string;
-  phone: string;
   role: UserRole;
-  shopName?: string;
-  cityId?: string;
+  email?: string;
+  phone?: string;
 }
 
 interface AppContextType {
@@ -20,6 +18,7 @@ interface AppContextType {
   selectedCity: City | null;
   setSelectedCity: (city: City | null) => void;
   cities: City[];
+  citiesLoading: boolean;
   logout: () => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
@@ -29,11 +28,45 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [selectedCity, setSelectedCity] = useState<City | null>(cities[0]);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Fetch cities from API
+  const { data: citiesData, isLoading: citiesLoading } = useQuery({
+    queryKey: ['cities'],
+    queryFn: async () => {
+      const response = await citiesApi.list();
+      return response.data;
+    },
+  });
+
+  const cities = citiesData || [];
+
+  // Set default city when cities are loaded
+  useEffect(() => {
+    if (cities.length > 0 && !selectedCity) {
+      setSelectedCity(cities[0]);
+    }
+  }, [cities, selectedCity]);
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.warn('Failed to parse stored user data:', e);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
+    }
+  }, []);
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   const toggleDarkMode = () => {
@@ -54,6 +87,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectedCity,
         setSelectedCity,
         cities,
+        citiesLoading,
         logout,
         isDarkMode,
         toggleDarkMode,
