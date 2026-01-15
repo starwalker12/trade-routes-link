@@ -67,8 +67,13 @@ async function generateInvoiceNumber(supplierId: string): Promise<string> {
 
   let sequence = 1;
   if (lastInvoice) {
-    const lastSequence = parseInt(lastInvoice.invoice_number.split('-')[2]);
-    sequence = lastSequence + 1;
+    const parts = lastInvoice.invoice_number.split('-');
+    if (parts.length >= 3) {
+      const lastSequence = parseInt(parts[2], 10);
+      if (!isNaN(lastSequence)) {
+        sequence = lastSequence + 1;
+      }
+    }
   }
 
   return `${prefix}${sequence.toString().padStart(4, '0')}`;
@@ -485,11 +490,17 @@ router.post(
         supplier.id
       );
       
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+      try {
+        await fs.promises.access(uploadDir);
+      } catch {
+        await fs.promises.mkdir(uploadDir, { recursive: true });
       }
 
-      const filename = `${invoice.invoice_number.replace(/\//g, '-')}.pdf`;
+      // Sanitize filename to prevent file system issues
+      const safeFilename = invoice.invoice_number
+        .replace(/[/\\:*?"<>|]/g, '-')
+        .substring(0, 255); // Limit filename length
+      const filename = `${safeFilename}.pdf`;
       const filepath = path.join(uploadDir, filename);
 
       // Generate PDF
