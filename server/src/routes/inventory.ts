@@ -91,7 +91,9 @@ router.post('/', authenticate, requireRole('SUPPLIER'), async (req: AuthRequest,
     await checkInventoryLimit(profile.id);
 
     const searchText = normalizeText(
-      `${data.productTitle} ${data.category} ${data.brand || ''} ${data.phoneModel || ''} ${data.variant || ''}`
+      [data.productTitle, data.category, data.brand, data.phoneModel, data.variant]
+        .filter(Boolean)
+        .join(' ')
     );
 
     let product = await prisma.product.findFirst({

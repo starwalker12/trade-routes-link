@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Test script for TradeRoutes API
 BASE_URL="http://localhost:3001"
