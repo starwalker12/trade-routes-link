@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { invoices, Invoice, BASE_URL } from '@/lib/api';
+import { invoices, Invoice, BASE_URL, openPdfUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -190,7 +190,7 @@ const InvoicesList = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => window.open(`${BASE_URL}${invoice.pdf_url}`, '_blank')}
+                              onClick={() => openPdfUrl(invoice.pdf_url!)}
                             >
                               <Download className="w-4 h-4" />
                             </Button>

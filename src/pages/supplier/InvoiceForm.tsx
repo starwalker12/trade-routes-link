@@ -238,7 +238,7 @@ const InvoiceForm = () => {
     0
   );
 
-  const grandTotal = subtotal + taxTotal - (discountTotal || 0);
+  const grandTotal = subtotal + taxTotal - discountTotal;
 
   if (isLoading) {
     return (

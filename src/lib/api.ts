@@ -38,7 +38,18 @@ api.interceptors.response.use(
 export default api;
 
 // Base URL for non-API resources (like PDFs)
-export const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+export const BASE_URL = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
+
+// Helper to safely open PDF URLs
+export const openPdfUrl = (pdfUrl: string) => {
+  // Validate that the URL is a relative path starting with /
+  if (!pdfUrl.startsWith('/') || pdfUrl.includes('..')) {
+    console.error('Invalid PDF URL');
+    return;
+  }
+  window.open(`${BASE_URL}${pdfUrl}`, '_blank');
+};
 
 // ============================================
 // TYPE DEFINITIONS

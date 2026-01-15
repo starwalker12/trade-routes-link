@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { Edit, FileText, Download, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { invoices, BASE_URL } from '@/lib/api';
+import { invoices, BASE_URL, openPdfUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -298,7 +298,7 @@ const InvoiceDetail = () => {
             {invoice.pdf_url && (
               <Button
                 variant="outline"
-                onClick={() => window.open(`${BASE_URL}${invoice.pdf_url}`, '_blank')}
+                onClick={() => openPdfUrl(invoice.pdf_url!)}
               >
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
