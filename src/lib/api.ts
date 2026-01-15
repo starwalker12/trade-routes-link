@@ -84,6 +84,7 @@ export interface SupplierProfile {
   lng: number;
   whatsappNumber?: string;
   phoneNumber: string;
+  logoUrl?: string;
   verifiedStatus: 'PENDING' | 'VERIFIED' | 'REJECTED';
   city?: City;
   marketArea?: MarketArea;
@@ -240,8 +241,14 @@ export const search = {
 // Suppliers
 export const suppliers = {
   getProfile: (id: string) => api.get<SupplierProfile>(`/suppliers/${id}`),
+  getMyProfile: () => api.get<SupplierProfile>('/suppliers/profile/me'),
   updateProfile: (data: Partial<SupplierProfile>) => api.put('/suppliers/profile', data),
   getInventory: (id: string) => api.get<InventoryItem[]>(`/suppliers/${id}/inventory`),
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return api.post<{ success: boolean; logoUrl: string }>('/supplier/logo', formData);
+  },
 };
 
 // Inventory (supplier only)

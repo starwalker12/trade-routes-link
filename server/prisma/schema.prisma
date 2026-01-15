@@ -80,6 +80,7 @@ model SupplierProfile {
   lng            Float
   whatsappNumber String?
   phoneNumber    String
+  logoUrl        String?        // nullable - stores public URL path
   verifiedStatus VerifiedStatus @default(PENDING)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

@@ -530,29 +530,89 @@ router.post(
       // Add watermark to first page
       addWatermark();
 
-      // Header
-      doc.fontSize(20).text(supplier.shopName, { align: 'left' });
-      doc.fontSize(10).text(supplier.address);
-      doc.text(`Phone: ${supplier.phoneNumber}`);
-      if (supplier.whatsappNumber) {
-        doc.text(`WhatsApp: ${supplier.whatsappNumber}`);
+      // PDF Layout Constants
+      const HEADER_START_Y = 50;
+      const LEFT_MARGIN = 50;
+      const LOGO_HEIGHT = 60;
+      const LOGO_MAX_WIDTH = 100;
+      const LOGO_AREA_WIDTH = 110; // Logo max width + padding
+      const INVOICE_METADATA_X = 400;
+      const HEADER_SECTION_HEIGHT = 80;
+      const LINE_SPACING = {
+        SMALL: 15,
+        MEDIUM: 20,
+        LARGE: 35,
+        XLARGE: 50,
+      };
+      const FONT_SIZES = {
+        TITLE: 16,
+        LARGE: 14,
+        NORMAL: 10,
+      };
+
+      // Header with logo
+      if (supplier.logoUrl) {
+        const logoPath = path.join(process.cwd(), supplier.logoUrl);
+        
+        // Check if logo file exists
+        if (fs.existsSync(logoPath)) {
+          try {
+            // Render logo at top-left
+            doc.image(logoPath, LEFT_MARGIN, HEADER_START_Y, { 
+              height: LOGO_HEIGHT,
+              fit: [LOGO_MAX_WIDTH, LOGO_HEIGHT],
+            });
+            
+            // Company details beside logo
+            doc.fontSize(FONT_SIZES.LARGE).font('Helvetica-Bold').text(supplier.shopName, LEFT_MARGIN + LOGO_AREA_WIDTH, HEADER_START_Y);
+            doc.fontSize(FONT_SIZES.NORMAL).font('Helvetica').text(supplier.address, LEFT_MARGIN + LOGO_AREA_WIDTH, HEADER_START_Y + LINE_SPACING.MEDIUM);
+            doc.text(`Phone: ${supplier.phoneNumber}`, LEFT_MARGIN + LOGO_AREA_WIDTH, HEADER_START_Y + LINE_SPACING.LARGE);
+            if (supplier.whatsappNumber) {
+              doc.text(`WhatsApp: ${supplier.whatsappNumber}`, LEFT_MARGIN + LOGO_AREA_WIDTH, HEADER_START_Y + LINE_SPACING.XLARGE);
+            }
+          } catch (error) {
+            console.warn('Failed to render logo image:', error);
+            // Fall back to text-only header
+            doc.fontSize(FONT_SIZES.TITLE).font('Helvetica-Bold').text(supplier.shopName, LEFT_MARGIN, HEADER_START_Y);
+            doc.fontSize(FONT_SIZES.NORMAL).font('Helvetica').text(supplier.address, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.MEDIUM);
+            doc.text(`Phone: ${supplier.phoneNumber}`, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.LARGE);
+            if (supplier.whatsappNumber) {
+              doc.text(`WhatsApp: ${supplier.whatsappNumber}`, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.XLARGE);
+            }
+          }
+        } else {
+          console.warn('Logo file not found:', logoPath);
+          // Fall back to text-only header
+          doc.fontSize(FONT_SIZES.TITLE).font('Helvetica-Bold').text(supplier.shopName, LEFT_MARGIN, HEADER_START_Y);
+          doc.fontSize(FONT_SIZES.NORMAL).font('Helvetica').text(supplier.address, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.MEDIUM);
+          doc.text(`Phone: ${supplier.phoneNumber}`, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.LARGE);
+          if (supplier.whatsappNumber) {
+            doc.text(`WhatsApp: ${supplier.whatsappNumber}`, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.XLARGE);
+          }
+        }
+      } else {
+        // No logo - text-only header with larger font
+        doc.fontSize(FONT_SIZES.TITLE).font('Helvetica-Bold').text(supplier.shopName, LEFT_MARGIN, HEADER_START_Y);
+        doc.fontSize(FONT_SIZES.NORMAL).font('Helvetica').text(supplier.address, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.MEDIUM);
+        doc.text(`Phone: ${supplier.phoneNumber}`, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.LARGE);
+        if (supplier.whatsappNumber) {
+          doc.text(`WhatsApp: ${supplier.whatsappNumber}`, LEFT_MARGIN, HEADER_START_Y + LINE_SPACING.XLARGE);
+        }
       }
+
+      // Invoice metadata (right-aligned, same Y level as header)
+      doc.fontSize(FONT_SIZES.NORMAL).font('Helvetica-Bold').text(`Invoice #${invoice.invoice_number}`, INVOICE_METADATA_X, HEADER_START_Y, { align: 'right' });
+      doc.fontSize(FONT_SIZES.NORMAL).font('Helvetica').text(`Date: ${invoice.invoice_date.toLocaleDateString()}`, INVOICE_METADATA_X, HEADER_START_Y + LINE_SPACING.SMALL, { align: 'right' });
+      if (invoice.due_date) {
+        doc.text(`Due Date: ${invoice.due_date.toLocaleDateString()}`, INVOICE_METADATA_X, HEADER_START_Y + LINE_SPACING.MEDIUM + FONT_SIZES.NORMAL, { align: 'right' });
+      }
+
+      // Move past header section
+      doc.y = HEADER_START_Y + HEADER_SECTION_HEIGHT;
       doc.moveDown();
 
-      // Invoice Info
-      doc.fontSize(16).text('INVOICE', { align: 'center' });
-      doc.fontSize(10);
-      doc.text(`Invoice #: ${invoice.invoice_number}`, { align: 'right' });
-      doc.text(
-        `Date: ${invoice.invoice_date.toLocaleDateString()}`,
-        { align: 'right' }
-      );
-      if (invoice.due_date) {
-        doc.text(
-          `Due Date: ${invoice.due_date.toLocaleDateString()}`,
-          { align: 'right' }
-        );
-      }
+      // Invoice Title
+      doc.fontSize(FONT_SIZES.TITLE).font('Helvetica-Bold').text('INVOICE', { align: 'center' });
       doc.moveDown();
 
       // Billed To

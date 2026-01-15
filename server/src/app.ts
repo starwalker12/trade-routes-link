@@ -8,6 +8,7 @@ import searchRoutes from './routes/search.js';
 import suppliersRoutes from './routes/suppliers.js';
 import inventoryRoutes from './routes/inventory.js';
 import invoiceRoutes from './routes/invoices.js';
+import logoRoutes from './routes/logo.js';
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/supplier/invoices', invoiceRoutes);
+app.use('/api/supplier/logo', logoRoutes);
 
 app.use(errorHandler);
 
