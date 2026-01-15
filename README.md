@@ -1,73 +1,133 @@
-# Welcome to your Lovable project
+# TradeRoutes - B2B Mobile Accessories Marketplace
 
-## Project info
+A full-stack B2B marketplace connecting retailers with mobile accessory suppliers across Pakistan.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Quick Start
 
-## How can I edit this code?
+### Prerequisites
+- Node.js 18+, npm, Docker, Git
 
-There are several ways of editing your application.
+### Setup Steps
 
-**Use Lovable**
+```bash
+# 1. Clone and install dependencies
+git clone https://github.com/starwalker12/trade-routes-link.git
+cd trade-routes-link
+npm install
+cd server && npm install && cd ..
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+# 2. Copy environment files
+cp .env.example .env
+cp server/.env.example server/.env
 
-Changes made via Lovable will be committed automatically to this repo.
+# 3. Start PostgreSQL
+docker compose up -d
 
-**Use your preferred IDE**
+# 4. Setup database
+cd server
+npx prisma generate
+npx prisma migrate dev
+npm run prisma:seed
+cd ..
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# 5. Start backend (in one terminal)
+cd server && npm run dev
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 6. Start frontend (in another terminal)
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Frontend: http://localhost:5173  
+Backend: http://localhost:3001
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🧪 Test Credentials
 
-**Use GitHub Codespaces**
+All passwords: `password123`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+**Admin:** admin@test.com  
+**Retailers:** retailer@test.com, retailer2@test.com  
+**Suppliers:** supplier1@test.com through supplier5@test.com
 
-## What technologies are used for this project?
+## ✅ Implemented Features
 
-This project is built with:
+### Backend (Priority 1)
+- ✅ PostgreSQL database with Prisma ORM
+- ✅ JWT authentication with bcrypt
+- ✅ Multi-city support (5 cities, 20+ markets)
+- ✅ Intelligent search with synonym mapping
+- ✅ Supplier profiles with geolocation
+- ✅ Inventory management with subscription gating
+- ✅ Role-based access control
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Frontend
+- ✅ React + TypeScript + TanStack Query
+- ✅ SearchResults page wired to real API
+- ✅ AppContext fetching cities dynamically
+- ✅ Axios client with auth interceptors
 
-## How can I deploy this project?
+### Critical Business Rules
+- ✅ NO PRICES shown to retailers (backend enforces)
+- ✅ Subscription gating (50/500/unlimited items)
+- ✅ Search ranking: verified > matchCount > updatedAt
+- ✅ Multi-city support (no hardcoding)
+- ✅ Public search (no auth required)
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## 📡 Key API Endpoints
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+# Search (Public)
+POST /api/search
+{
+  "query": "samsung case",
+  "cityId": "optional-uuid"
+}
 
-Yes, you can!
+# Login
+POST /api/auth/login
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+# Get Cities (Public)
+GET /api/cities
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+# Add Inventory (Supplier only)
+POST /api/inventory
+Authorization: Bearer <token>
+{
+  "newProduct": {
+    "title": "Product Name",
+    "category": "Cases",
+    "brand": "Samsung"
+  },
+  "quantity": 100
+}
+```
+
+## 🔍 Search Features
+
+**Synonym Mapping:**  
+case ↔ cover | glass ↔ protector | charger ↔ adaptor | cable ↔ wire
+
+**Ranking:**  
+1. Verified suppliers first
+2. Higher match count
+3. Recently updated
+
+## 🛠️ Tech Stack
+
+**Frontend:** React 18, TypeScript, Vite, TanStack Query, shadcn/ui, Tailwind  
+**Backend:** Node.js, Express, TypeScript, Prisma, PostgreSQL, JWT, bcrypt, Zod
+
+## 📋 Roadmap
+
+**Completed:** Backend foundation, auth, search, inventory, frontend integration  
+**Next:** Map clustering, authentication UI, supplier dashboard wiring  
+**Planned:** Quotes, chat, admin panel, subscriptions, analytics, sales
+
+## 🆘 Support
+
+Check README for detailed setup instructions and API documentation.
+
+Full documentation at: [README.md]
