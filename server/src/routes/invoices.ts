@@ -191,7 +191,12 @@ router.get(
       const sortField = (req.query.sort as string)?.split(':')[0] || 'invoice_date';
       const sortOrder = (req.query.sort as string)?.split(':')[1] || 'desc';
 
-      const where: any = { supplierId: supplier.id };
+      interface WhereClause {
+        supplierId: string;
+        status?: InvoiceStatus;
+      }
+
+      const where: WhereClause = { supplierId: supplier.id };
       if (status) {
         where.status = status;
       }
@@ -293,11 +298,26 @@ router.patch(
         throw new AppError(404, 'Invoice not found');
       }
 
-      if (invoice.status !== InvoiceStatus.DRAFT) {
-        throw new AppError(400, 'Can only update draft invoices');
+      // Allow status changes on any invoice, but other fields only on DRAFT
+      const isStatusOnlyUpdate = data.status && Object.keys(data).length === 1;
+      
+      if (invoice.status !== InvoiceStatus.DRAFT && !isStatusOnlyUpdate) {
+        throw new AppError(400, 'Can only update draft invoices (except for status changes)');
       }
 
-      const updateData: any = {};
+      interface UpdateData {
+        retailerUserId?: string | null;
+        retailer_name_snapshot?: string;
+        retailer_phone_snapshot?: string | null;
+        retailer_address_snapshot?: string | null;
+        invoice_date?: Date;
+        due_date?: Date | null;
+        notes?: string | null;
+        status?: InvoiceStatus;
+        discount_total?: Prisma.Decimal;
+      }
+
+      const updateData: UpdateData = {};
       
       if (data.retailerUserId !== undefined) updateData.retailerUserId = data.retailerUserId;
       if (data.retailer_name_snapshot) updateData.retailer_name_snapshot = data.retailer_name_snapshot;
